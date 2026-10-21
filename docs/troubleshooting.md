@@ -39,6 +39,17 @@ Check the input with the [manual checker](setup.md#check-a-response-manually). P
 
 Report the host name, version, installation method, and error. Use a short synthetic response to reproduce the problem. Remove private conversation text from reports.
 
+## The plugin icon is missing
+
+1. Confirm that the installed plugin includes `assets/icon.svg`.
+2. Check the field for your host in the [branding reference](setup.md#plugin-branding).
+3. Update or reinstall the plugin if its installed copy predates the branding assets.
+
+Claude's `icon` field is for Anthropic's directory listing. It does not add an icon
+inside Claude Code. See the official [directory listing reference](https://code.claude.com/docs/en/plugins-reference#directory-listing-fields).
+
+The manifests reference the shared SVG. Display in host interfaces remains unverified.
+
 ## Development checks fail
 
 Use the [development guide](development.md) to select the pinned interpreter,

@@ -35,6 +35,21 @@ remain unverified. Python checks on Windows do not establish host activation.
 
 3. Follow the installation guide for your host above.
 
+## Plugin branding
+
+All three manifests reference the shared [deadpan bubble icon](../assets/icon.svg).
+The [README banner](../assets/banner.svg) uses the same mark and pale violet background.
+
+| Host | Manifest field | Official reference |
+| --- | --- | --- |
+| Codex | `interface.logo` | [Plugin guide](https://developers.openai.com/plugins/build/plugins) |
+| Claude Code | `icon` | [Directory listing fields](https://code.claude.com/docs/en/plugins-reference#directory-listing-fields) |
+| Cursor | `logo` | [Logos](https://cursor.com/docs/reference/plugins#logos) |
+
+Claude's `icon` is directory listing metadata. Claude Code ignores it at load time.
+These fields are configured from the official references, checked on 2026-10-21.
+Icon display in installed hosts and directory listings has not been observed.
+
 ## Check a response manually
 
 
