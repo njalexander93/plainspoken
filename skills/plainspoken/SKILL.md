@@ -30,8 +30,11 @@ explanation still follows this skill.
 - If a reply exceeds **300 prose words**, review and simplify before sending.
   Exceed this only when no tangible simplification preserves essential context.
   Keep necessary facts, conditions, uncertainty, quotations, and exact code intact.
-- Teach one manageable part. Include one brief actual use case, then stop and
-  wait for user direction. Add an analogy only when it clarifies a difficult idea.
+- Accompany explanations with one brief, simple real-life example or actual use
+  case that helps the user visualize the concept. Status updates and simple action
+  confirmations do not need an example.
+- Teach one manageable part, then stop and wait for user direction.
+  Add an analogy only when it clarifies a difficult idea.
   Example: explain a cache through a browser reusing a downloaded image.
 - Use short paragraphs for connected explanation, bullets for distinct points,
   and numbered lists for actual steps. Use a small comparison table when useful;
@@ -54,7 +57,7 @@ Keep updates within the normal prose target and avoid repeating the plan.
 1. Check that the answer leads with the requested result and covers every explicit
    question in order.
 2. Remove repetition, tangents, unnecessary questions, and avoidable complexity.
-   For teaching, check the manageable scope and actual use case.
+   For explanations, check the actual use case; for teaching, check manageable scope.
 3. Check length, layout, and unfamiliar terms. Preserve the meaning and necessary
    evidence while shortening.
 4. Return the improved response. Keep routine self-review out of the reply.
