@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/hook.py\" cursor",
+        "timeout": 5
+      }
+    ]
+  }
+}

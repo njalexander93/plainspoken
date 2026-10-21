@@ -1,0 +1,15 @@
+{
+  "name": "plainspoken-local",
+  "owner": {
+    "name": "Nikolai"
+  },
+  "plugins": [
+    {
+      "name": "plainspoken",
+      "source": "./"
+    }
+  ],
+  "metadata": {
+    "description": "Plainspoken local response-style plugin."
+  }
+}

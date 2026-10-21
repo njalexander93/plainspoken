@@ -1,0 +1,8 @@
+---
+description: Apply Plainspoken to conversation replies and task updates.
+alwaysApply: true
+---
+
+Apply this plugin's [Plainspoken skill](../skills/plainspoken/SKILL.md) to each
+conversation reply and progress update. Read it when its instructions are not
+already in context. Keep authored deliverables in their requested style.
