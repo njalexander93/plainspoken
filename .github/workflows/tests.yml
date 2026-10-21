@@ -1,0 +1,134 @@
+name: PR Pre-Merge Check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-pre-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Bash also exercises the POSIX commands shipped in the plugin manifests.
+defaults:
+  run:
+    shell: bash
+
+env:
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  PYTHONUTF8: "1"
+
+jobs:
+  quality:
+    name: Code Quality Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - name: Install locked tooling
+        run: |
+          python -m pip install poetry==2.4.2
+          python -c "import subprocess, sys; subprocess.run(['poetry', 'env', 'use', sys.executable], check=True)"
+          poetry sync
+      - name: Validate dependency lock
+        run: poetry check --lock --strict
+      - name: Check formatting
+        run: poetry run ruff format --check .
+      - name: Lint without changing files
+        run: poetry run ruff check --no-fix .
+      - name: Check types
+        run: poetry run mypy
+
+  tests:
+    name: ${{ matrix.name }} Tests (Unit/Integration)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, name: Linux, artifact: linux}
+          - {os: windows-2025, name: Windows, artifact: windows}
+          - {os: macos-15, name: MacOS, artifact: macos}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - name: Install locked tooling
+        run: |
+          python -m pip install poetry==2.4.2
+          python -c "import subprocess, sys; subprocess.run(['poetry', 'env', 'use', sys.executable], check=True)"
+          poetry sync
+      - name: Test with branch and subprocess coverage
+        run: poetry run pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml
+      - name: Name coverage data for aggregation
+        run: cp .coverage .coverage.${{ matrix.artifact }}
+      - name: Retain per-platform results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-tests-${{ matrix.artifact }}
+          include-hidden-files: true
+          overwrite: true
+          path: |
+            .coverage.${{ matrix.artifact }}
+            coverage.xml
+            test-results.xml
+          if-no-files-found: error
+          retention-days: 14
+
+  coverage:
+    name: Test Quality Check
+    if: ${{ !cancelled() }}
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # A successful aggregate must never conceal a failed or missing OS run.
+      - name: Require every platform test job to pass
+        env:
+          TEST_RESULT: ${{ needs.tests.result }}
+        run: test "$TEST_RESULT" = success
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - name: Install locked tooling
+        run: |
+          python -m pip install poetry==2.4.2
+          python -c "import subprocess, sys; subprocess.run(['poetry', 'env', 'use', sys.executable], check=True)"
+          poetry sync
+      - name: Download platform evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: python-tests-*
+          path: coverage-inputs
+      - name: Validate and combine all three platforms
+        run: |
+          for platform in linux windows macos; do
+            test -s "coverage-inputs/python-tests-$platform/.coverage.$platform"
+            test -s "coverage-inputs/python-tests-$platform/test-results.xml"
+          done
+          poetry run coverage combine coverage-inputs/python-tests-*
+          poetry run coverage report
+          poetry run coverage xml -o coverage.xml
+      - name: Retain combined coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-test-quality
+          path: coverage.xml
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14

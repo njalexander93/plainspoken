@@ -1,0 +1,11 @@
+{
+  "name": "plainspoken",
+  "version": "0.1.0",
+  "description": "Short, clear conversation replies with bounded self-review.",
+  "skills": "./skills/",
+  "hooks": "./hooks/cursor.json",
+  "rules": "./rules/",
+  "author": {
+    "name": "Nikolai"
+  }
+}

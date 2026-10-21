@@ -1,0 +1,4 @@
+# Keep hook commands and packaged text consistent across checkouts.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
