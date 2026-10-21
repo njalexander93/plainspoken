@@ -9,7 +9,7 @@
   <a href="docs/development.md">Contribute</a>
 </p>
 
-# Clear replies for coding assistance. Enough said.
+## Clear replies for coding assistance. Enough said.
 
 Plainspoken gives coding assistants shared response preferences: answer the question first, use simple language, and stop when the useful answer is complete.
 
