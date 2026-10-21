@@ -2,13 +2,16 @@
   <img src="assets/banner.svg" alt="Plainspoken. Plain answers. Less repetition. A deadpan speech bubble on a pale violet background." width="1200">
 </p>
 
-# Plainspoken
+<p align="center">
+  <a href="#pick-your-host">Install</a> ·
+  <a href="skills/plainspoken/SKILL.md">Response rules</a> ·
+  <a href="docs/troubleshooting.md">Troubleshooting</a> ·
+  <a href="docs/development.md">Contribute</a>
+</p>
 
-**Clear replies for coding assistants. Enough said.**
+# Clear replies for coding assistance: enough said
 
 Plainspoken gives coding assistants shared response preferences: answer the question first, use simple language, and stop when the useful answer is complete.
-
-[Install](#pick-your-host) · [Response rules](skills/plainspoken/SKILL.md) · [Troubleshooting](docs/troubleshooting.md) · [Contribute](docs/development.md)
 
 ## Pick your host
 
