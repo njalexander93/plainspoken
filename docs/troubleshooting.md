@@ -4,8 +4,9 @@
 
 1. Start a new conversation after installation.
 2. Confirm that your host lists Plainspoken as an enabled plugin.
-3. Ask the assistant to use the Plainspoken skill for one reply.
-4. Check that another instruction does not require a longer answer or a different format.
+3. In Codex, open `/hooks` and review the trust state of the three Plainspoken hooks.
+4. Ask the assistant to use the Plainspoken skill for one reply.
+5. Check that another instruction does not require a longer answer or a different format.
 
 A short answer alone does not prove that a hook ran. Check the host's plugin and hook diagnostics before reporting successful activation.
 

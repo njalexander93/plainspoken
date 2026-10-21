@@ -5,7 +5,7 @@
 ## Requirements
 
 - Git, to obtain this repository.
-- Python 3, available as `python3` to the host's hook commands.
+- Python 3.11 or newer, available as `python3` to the host's hook commands. Local verification used Python 3.13.
 - A host with the plugin features described below.
 
 The commands below use a macOS or Linux shell. Run them from a terminal where your host's command is available.
@@ -47,7 +47,9 @@ This integration targets **Codex with local plugin hooks**, including the deskto
    codex plugin list
    ```
 
-4. Start a new Codex conversation. Ask the assistant to use Plainspoken and answer a short question.
+4. Start Codex in your project and complete its normal folder trust review.
+5. Open `/hooks`. Review the Plainspoken commands for `SessionStart`, `UserPromptSubmit`, and `Stop`. Trust only the commands you have reviewed.
+6. Start a new conversation. Ask the assistant to use Plainspoken and answer a short question.
 
 Codex receives reminders when a session starts and when you submit a prompt. Its stop hook can request one follow-up review of an answer over 300 prose words. The hook skips a repeated stop-hook continuation.
 
@@ -155,12 +157,16 @@ Use your host's hook diagnostics to confirm session and prompt reminders. A stop
 
 ## First-pass verification
 
-| Integration | Included behavior | Native verification |
+Observed on **2026-10-21**. Project-hook runs prove the callbacks worked. They do not prove plugin installation.
+
+| Host | Observed result | Remaining limits |
 | --- | --- | --- |
-| Codex | Skill, session and prompt reminders, bounded stop review | Pending. Do not treat fixture tests as host activation. |
-| Claude Code | Skill, session and prompt reminders, bounded stop review | Pending. Manifest and callback runs are separate checks. |
-| Cursor | Skill, always-applied rule, session reminder | Pending. Automatic response review is not included. |
-| Shared checker | Word counts and advisory signals | Manual CLI examples and 13 unit tests pass on Python 3.13. |
+| Codex bundled CLI `0.163.0-alpha.10.2` | Project hooks delivered both reminders. A 341-word answer triggered one review, then continuation ended. | Codex plugin installation and Desktop UI remain unverified. |
+| Claude Code engine `2.1.304` | Desktop Code project hooks handled short and long replies, including one review and termination. CLI `--plugin-dir` discovered the plugin and delivered both reminders. | Desktop plugin installation remains unverified. CLI response generation lacked authentication. |
+| Cursor `3.25.9` | Local plugin discovery showed one skill, one rule, and one hook. A short reply ran. A captured session-start callback returned the canonical reminder. | Callback capture wrapped the command and ran the unchanged adapter. Automatic response review is not included. |
+| Shared Python code | Manual checker examples and the unit suite pass on Python 3.13. | Synthetic tests do not prove host activation or answer quality. |
+
+The Codex and Claude long-answer tests requested a review after text was visible. Neither test demonstrates retraction or a silent replacement.
 
 ## Development
 
