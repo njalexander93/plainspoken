@@ -27,13 +27,13 @@ Limits:
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from check_response import MAX_INPUT_BYTES, check_response
 
 
-def respond(host, payload):
+def respond(host: str, payload: object) -> dict[str, object]:
     """Build the advisory output for one host event.
 
     Args:
@@ -57,8 +57,10 @@ def respond(host, payload):
         return {}
     event = payload.get("hook_event_name")
     # Host event names differ in case and supported reminder timing.
-    reminder = event == "sessionStart" if host == "cursor" else event in (
-        "SessionStart", "UserPromptSubmit"
+    reminder = (
+        event == "sessionStart"
+        if host == "cursor"
+        else event in ("SessionStart", "UserPromptSubmit")
     )
     if reminder:
         # Load the rule source at event time so reminders stay canonical.
@@ -68,9 +70,12 @@ def respond(host, payload):
             # Cursor expects context directly on the response object.
             return {"additional_context": context}
         # Codex and Claude attach context to a named hook event.
-        return {"hookSpecificOutput": {
-            "hookEventName": event, "additionalContext": context,
-        }}
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": event,
+                "additionalContext": context,
+            }
+        }
     if host != "cursor" and event == "Stop":
         # Require an explicit first stop to avoid repeated review requests.
         text = payload.get("last_assistant_message")
@@ -85,7 +90,8 @@ def respond(host, payload):
                     "Apply the canonical plainspoken skill to conversational prose; "
                     "authored documents, emails, and other deliverables are outside its scope. "
                     "Simplify only when that preserves essential facts, conditions, uncertainty, "
-                    "quotations, and exact code. Do not narrate this review or add a review summary. "
+                    "quotations, and exact code. "
+                    "Do not narrate this review or add a review summary. "
                     "If no useful revision exists or the text is outside scope, "
                     "finish without additional prose. "
                     "Visible text cannot be retracted by this review."
@@ -95,7 +101,7 @@ def respond(host, payload):
     return {}
 
 
-def main():
+def main() -> int:
     """Read one supported host payload and print its JSON hook response.
 
     Returns:
@@ -105,7 +111,7 @@ def main():
     Raises:
         OSError: Writing the JSON response to stdout fails.
     """
-    output = {}
+    output: dict[str, object] = {}
     # Ignore unsupported invocations without consuming stdin.
     if len(sys.argv) == 2 and sys.argv[1] in ("codex", "claude", "cursor"):
         try:

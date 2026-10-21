@@ -1,10 +1,12 @@
 # Troubleshooting
 
+Use your host's guide for installation and activation checks: [Codex](setup/codex.md), [Claude Code](setup/claude.md), or [Cursor](setup/cursor.md).
+
 ## Replies still look unchanged
 
 1. Start a new conversation after installation.
 2. Confirm that your host lists Plainspoken as an enabled plugin.
-3. In Codex, open `/hooks` and review the trust state of the three Plainspoken hooks.
+3. Follow your host guide's activation checks and inspect hook trust where required.
 4. Ask the assistant to use the Plainspoken skill for one reply.
 5. Check that another instruction does not require a longer answer or a different format.
 
@@ -36,3 +38,9 @@ Check the input with the [manual checker](setup.md#check-a-response-manually). P
 4. Reinstall from the current checkout if an update left mixed files.
 
 Report the host name, version, installation method, and error. Use a short synthetic response to reproduce the problem. Remove private conversation text from reports.
+
+## Development checks fail
+
+Use the [development guide](development.md) to select the pinned interpreter,
+sync the locked Poetry environment, and run the checks. A development environment
+pass does not prove that a host can find `python3` or load Plainspoken's hooks.

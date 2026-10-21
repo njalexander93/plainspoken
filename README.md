@@ -18,7 +18,8 @@ The [response skill](skills/plainspoken/SKILL.md) owns the full rules. The share
 
 ## Setup
 
-See [setup and supported surfaces](docs/setup.md) for installation, activation, verification, and removal.
+Choose your installation guide: [Codex](docs/setup/codex.md), [Claude Code](docs/setup/claude.md), or [Cursor](docs/setup/cursor.md).
+See [shared requirements and the manual checker](docs/setup.md) before installation.
 
 Plainspoken targets **Codex**, **Claude Code**, and **Cursor**. Ordinary ChatGPT and Claude chats are separate products and are not covered by these integrations.
 
@@ -26,7 +27,7 @@ Hooks can request a review after an answer. They cannot retract text already sho
 
 ## Development
 
-Use [AGENTS.md](AGENTS.md) for the contributor entry point. Run the documented checks before proposing changes.
+Use [AGENTS.md](AGENTS.md) for the contributor entry point. Follow [development setup and checks](docs/development.md) before proposing changes.
 
 For installation problems, see [troubleshooting](docs/troubleshooting.md).
 

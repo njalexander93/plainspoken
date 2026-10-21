@@ -1,0 +1,71 @@
+[project]
+name = "plainspoken"
+version = "0.1.0"
+description = "Plainspoken response guidance and dependency-free host hook adapters"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.poetry]
+package-mode = false
+requires-poetry = "==2.4.2"
+
+[tool.poetry.group.lint.dependencies]
+ruff = "==0.16.4"
+pre-commit = "==4.6.2"
+
+[tool.poetry.group.types.dependencies]
+mypy = "==2.3.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "==9.1.1"
+pytest-cov = "==7.1.0"
+coverage = "==7.16.2"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".project", "work"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "D", "G"]
+ignore = ["D205", "D200"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "scripts"
+files = ["scripts"]
+explicit_package_bases = true
+namespace_packages = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-v --strict-config --strict-markers --import-mode=importlib"
+testpaths = ["tests"]
+pythonpath = ["scripts", "."]
+
+[tool.coverage.run]
+branch = true
+core = "ctrace"
+patch = ["subprocess"]
+relative_files = true
+source = ["scripts"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true

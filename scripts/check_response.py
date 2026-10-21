@@ -35,7 +35,7 @@ import argparse
 import json
 import re
 import sys
-
+from typing import TypedDict
 
 MAX_INPUT_BYTES = 1024 * 1024
 _WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
@@ -44,7 +44,25 @@ _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 _LINK = re.compile(r'!?\[([^][\n]*)\]\([^][\s)]*(?:[ \t]+"[^]["\n]*")?\)')
 
 
-def _without_inline_code(text):
+class ResponseObservations(TypedDict):
+    """Describe the counted prose and advisory thresholds for a response.
+
+    Attributes:
+        scope: Caller-selected reply or artifact scope.
+        prose_words: Number of words remaining after Markdown cleanup.
+        target_words: Reply target, or None for an authored artifact.
+        target_exceeded: Whether the count exceeds the selected reply target.
+        review_required: Whether reply prose exceeds 300 words.
+    """
+
+    scope: str
+    prose_words: int
+    target_words: int | None
+    target_exceeded: bool
+    review_required: bool
+
+
+def _without_inline_code(text: str) -> str:
     """Replace matched equal-width backtick spans with spaces.
 
     Args:
@@ -57,14 +75,14 @@ def _without_inline_code(text):
     """
     # Pair equal-width runs without backtracking on malformed Markdown.
     runs = list(re.finditer(r"`+", text))
-    following = [None] * len(runs)
-    last_by_width = {}
+    following: list[int | None] = [None] * len(runs)
+    last_by_width: dict[int, int] = {}
     # Index the next possible closing run in one reverse pass.
     for index in range(len(runs) - 1, -1, -1):
         width = runs[index].end() - runs[index].start()
         following[index] = last_by_width.get(width)
         last_by_width[width] = index
-    pieces = []
+    pieces: list[str] = []
     start = 0
     index = 0
     # Keep surrounding prose and jump past each complete code span.
@@ -74,14 +92,14 @@ def _without_inline_code(text):
             # An unmatched opener must not hide the remaining prose.
             index += 1
             continue
-        pieces.extend((text[start:runs[index].start()], " "))
+        pieces.extend((text[start : runs[index].start()], " "))
         start = runs[closing].end()
         index = closing + 1
     pieces.append(text[start:])
     return "".join(pieces)
 
 
-def _prose(text):
+def _prose(text: str) -> str:
     """Extract the approximate Markdown prose used by the word counter.
 
     Args:
@@ -101,7 +119,12 @@ def _prose(text):
         match = _FENCE.match(line)
         if fence:
             # Only a same-character, sufficiently wide bare fence closes code.
-            if match and match[1][0] == fence[0] and len(match[1]) >= len(fence) and not match[2].strip():
+            if (
+                match
+                and match[1][0] == fence[0]
+                and len(match[1]) >= len(fence)
+                and not match[2].strip()
+            ):
                 fence = None
             continue
         if match and not (match[1][0] == "`" and "`" in match[2]):
@@ -130,7 +153,9 @@ def _prose(text):
     return prose
 
 
-def check_response(text: str, *, mode="default", scope="reply") -> dict:
+def check_response(
+    text: str, *, mode: str = "default", scope: str = "reply"
+) -> ResponseObservations:
     """Return prose observations without rejecting answers above a target.
 
     Args:
@@ -172,7 +197,7 @@ def check_response(text: str, *, mode="default", scope="reply") -> dict:
     }
 
 
-def main():
+def main() -> int:
     """Read bounded UTF-8 stdin and print the checker's JSON observations.
 
     Returns:
