@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Plainspoken</title>
+  <desc id="desc">A deadpan speech bubble with dot eyes and a straight mouth on a pale violet background.</desc>
+  <rect width="256" height="256" rx="48" fill="#EAE5FA"/>
+  <g transform="translate(26 16) scale(1.25)">
+    <path d="M28 27 H135 Q156 27 156 48 V108 Q156 129 135 129 H79 L47 152 V129 H28 Q7 129 7 108 V48 Q7 27 28 27Z" fill="#FFFDF7" stroke="#242524" stroke-width="7" stroke-linejoin="round"/>
+    <g fill="#242524">
+      <circle cx="58" cy="70" r="4.5"/>
+      <circle cx="106" cy="70" r="4.5"/>
+    </g>
+    <path d="M59 99 H105" stroke="#242524" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

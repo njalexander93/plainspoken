@@ -7,5 +7,6 @@
   "rules": "./rules/",
   "author": {
     "name": "Nikolai"
-  }
+  },
+  "logo": "assets/icon.svg"
 }

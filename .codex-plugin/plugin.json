@@ -6,5 +6,9 @@
   "hooks": "./hooks/codex.json",
   "author": {
     "name": "Nikolai"
+  },
+  "interface": {
+    "displayName": "Plainspoken",
+    "logo": "./assets/icon.svg"
   }
 }

@@ -6,5 +6,6 @@
   "hooks": "./hooks/hooks.json",
   "author": {
     "name": "Nikolai"
-  }
+  },
+  "icon": "./assets/icon.svg"
 }
