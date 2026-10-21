@@ -101,11 +101,21 @@ See [pre-commit usage](https://pre-commit.com/#usage).
 
 ## Check changes in CI
 
-The [workflow](../.github/workflows/tests.yml) defines:
+The [PR Pre-Merge Check workflow](../.github/workflows/tests.yml) runs only on
+pull requests targeting `main`. New PR commits replace older in-progress runs.
+Branch pushes do not start a duplicate workflow.
 
-- A Linux quality job for lock validation, formatting, lint, and types.
-- Test jobs on Ubuntu, macOS, and Windows, each using Python 3.11 and 3.14.
-- Coverage and test-result artifacts for each test job.
+Its five checks follow Nplet's PR structure:
+
+- **Code Quality Check:** lock validation, formatting, lint, and types.
+- **Linux Tests, Windows Tests, and MacOS Tests:** the full suite and per-platform
+  80% coverage gate, using the Python version pinned in `.python-version`.
+- **Test Quality Check:** requires all three platform jobs to pass, checks that
+  each supplied evidence, then combines coverage and enforces the coverage floor.
+
+Platform jobs retain coverage data, coverage XML, and test-result XML. The final
+job retains combined coverage XML. This structure uses one pinned Python version;
+the previous Python 3.11/3.14 matrix is no longer part of routine PR checks.
 
 These are configured checks. A workflow file does not prove the jobs passed.
 The test commands use Bash on all three systems, including Windows. They exercise
