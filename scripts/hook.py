@@ -35,8 +35,9 @@ def respond(host, payload):
                     "Apply the canonical plainspoken skill to conversational prose; "
                     "authored documents, emails, and other deliverables are outside its scope. "
                     "Simplify only when that preserves essential facts, conditions, uncertainty, "
-                    "quotations, and exact code. If no useful simplification exists or the text "
-                    "is outside scope, finish without repeating the answer. "
+                    "quotations, and exact code. Do not narrate this review or add a review summary. "
+                    "If no useful revision exists or the text is outside scope, "
+                    "finish without additional prose. "
                     "Visible text cannot be retracted by this review."
                 ),
             }
