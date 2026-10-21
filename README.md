@@ -11,7 +11,7 @@
 
 ## Clear replies for coding assistance. Enough said.
 
-Plainspoken gives coding assistants shared response preferences: answer the question first, use simple language, and stop when the useful answer is complete.
+Plainspoken is a small plugin for getting clearer replies from coding assistants. It asks them to answer the question directly, explain things in plain language, and leave out repetition once the point is clear.
 
 ## Pick your host
 
