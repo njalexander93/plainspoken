@@ -13,7 +13,8 @@ Counting is an English-oriented Markdown approximation, not a full parser:
 exclude backtick/tilde fences (including an unclosed fence's remainder), indented
 code blocks starting after a blank line, and matched inline backtick spans.
 Put logs in fenced/indented blocks; raw log-like lines remain prose. Count link
-labels rather than destinations, headings, lists, quotes, and table cell prose.
+labels rather than simple inline destinations, headings, lists, quotes, and table
+cell prose. Brackets inside destinations/titles are outside this approximation.
 Words are Unicode letter/digit runs with internal apostrophes or hyphens. This
 does not segment languages without spaces. Nested Markdown and HTML can differ
 from a host renderer; no count proves relevance, accessibility, or comprehension.
@@ -28,6 +29,8 @@ import sys
 MAX_INPUT_BYTES = 1024 * 1024
 _WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+# Brackets bound each candidate scan; malformed links cannot rescan later labels.
+_LINK = re.compile(r'!?\[([^][\n]*)\]\([^][\s)]*(?:[ \t]+"[^]["\n]*")?\)')
 
 
 def _without_inline_code(text):
@@ -81,7 +84,7 @@ def _prose(text):
         previous_blank = False
         lines.append(line)
     prose = _without_inline_code("\n".join(lines))
-    prose = re.sub(r"!?\[([^][\n]*)\]\([^\s)]*(?:\s+\"[^\"]*\")?\)", r"\1", prose)
+    prose = _LINK.sub(r"\1", prose)
     prose = re.sub(r"^ {0,3}\[[^][\n]+\]:.*$", "", prose, flags=re.MULTILINE)
     prose = re.sub(r"^\s*(?:>\s*)*(?:[-+*]|\d+[.)])\s+", "", prose, flags=re.MULTILINE)
     return prose

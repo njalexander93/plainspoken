@@ -70,6 +70,19 @@ class ResponseCheckTests(unittest.TestCase):
     def test_inline_code_can_contain_shorter_backtick_runs(self):
         self.assertEqual(check_response("Run ``echo `date` now`` safely.")["prose_words"], 2)
 
+    def test_repeated_incomplete_links_finish_at_input_limit(self):
+        command = [sys.executable, str(Path(__file__).parents[1] / "scripts/check_response.py")]
+        result = subprocess.run(
+            command, input="[x](" * 262144, text=True, capture_output=True, timeout=5,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(json.loads(result.stdout)["prose_words"], 262144)
+
+    def test_links_keep_labels_and_skip_destinations_and_titles(self):
+        # Hand count: Read (1), the guide (2), and (1), status badge (2).
+        text = 'Read [the guide](https://example.com "A long title") and ![status badge](image.svg).'
+        self.assertEqual(check_response(text)["prose_words"], 6)
+
     def test_plain_logs_are_not_guessed_away_or_prose_continuations_dropped(self):
         self.assertEqual(check_response("ERROR build failed\n    check the input")["prose_words"], 6)
 
