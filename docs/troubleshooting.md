@@ -14,7 +14,7 @@ A short answer alone does not prove that a hook ran. Check the host's plugin and
 
 The stop hook runs after the assistant's answer. A requested review can create a follow-up answer. It cannot remove text already displayed.
 
-The skill asks the assistant to revise before sending. That instruction depends on the assistant following it.
+The skill asks the assistant to revise before sending. That instruction depends on the assistant following it. A model may still add a brief review confirmation even when the hook asks it to stop without extra prose.
 
 ## A long answer passes the checker
 

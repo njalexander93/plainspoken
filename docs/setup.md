@@ -161,10 +161,10 @@ Observed on **2026-10-21**. Project-hook runs prove the callbacks worked. They d
 
 | Host | Observed result | Remaining limits |
 | --- | --- | --- |
-| Codex bundled CLI `0.163.0-alpha.10.2` | Project hooks delivered both reminders. A 341-word answer triggered one review, then continuation ended. | Codex plugin installation and Desktop UI remain unverified. |
+| Codex bundled CLI `0.163.0-alpha.10.2` | Project hooks delivered both reminders. An answer over 300 words triggered one review, then continuation ended. | Codex plugin installation and Desktop UI remain unverified. |
 | Claude Code engine `2.1.304` | Desktop Code project hooks handled short and long replies, including one review and termination. CLI `--plugin-dir` discovered the plugin and delivered both reminders. | Desktop plugin installation remains unverified. CLI response generation lacked authentication. |
 | Cursor `3.25.9` | Local plugin discovery showed one skill, one rule, and one hook. A short reply ran. A captured session-start callback returned the canonical reminder. | Callback capture wrapped the command and ran the unchanged adapter. Automatic response review is not included. |
-| Shared Python code | Manual checker examples and the unit suite pass on Python 3.13. | Synthetic tests do not prove host activation or answer quality. |
+| Shared Python code | 23 tests pass locally on Python 3.13 and in Linux/macOS CI on Python 3.11. | Synthetic tests do not prove host activation or answer quality. |
 
 The Codex and Claude long-answer tests requested a review after text was visible. Neither test demonstrates retraction or a silent replacement.
 
