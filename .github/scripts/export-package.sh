@@ -22,18 +22,21 @@ required=(
 )
 
 # git archive is reproducible for one commit and stores the commit id in the tar header.
-tar="$out/plainspoken-$sha.tar"
-git archive --format=tar --prefix=plainspoken/ "$sha" > "$tar"
-tar -xf "$tar" -C "$out/export" --strip-components=1
+# Paths stay relative to the output directory: GNU tar on Windows reads "D:\..." as a host.
+repo=$(git rev-parse --show-toplevel)
+cd "$out"
+tar="plainspoken-$sha.tar"
+git -C "$repo" archive --format=tar --prefix=plainspoken/ "$sha" > "$tar"
+tar -xf "$tar" -C export --strip-components=1
 for file in "${required[@]}"; do
-  test -s "$out/export/$file" || { echo "Export of $sha lacks $file" >&2; exit 1; }
+  test -s "export/$file" || { echo "Export of $sha lacks $file" >&2; exit 1; }
 done
 
-python3 - "$sha" "$tar" "$out/package.json" "${required[@]}" <<'EOF'
+python3 - "$sha" "$tar" package.json "${required[@]}" <<'EOF'
 import hashlib, json, re, sys
 from pathlib import Path
 sha, tar, target, *required = sys.argv[1:]
-version = re.search(r'^version = "([^"]+)"', Path(tar).parent.joinpath("export/pyproject.toml").read_text(), re.M)
+version = re.search(r'^version = "([^"]+)"', Path("export/pyproject.toml").read_text(), re.M)
 Path(target).write_text(json.dumps({
     "sha": sha,
     "version": version.group(1) if version else None,
@@ -42,4 +45,4 @@ Path(target).write_text(json.dumps({
     "required_files": required,
 }, indent=2) + "\n")
 EOF
-cat "$out/package.json"
+cat package.json

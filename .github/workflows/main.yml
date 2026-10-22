@@ -89,9 +89,11 @@ jobs:
           name: package
           path: ${{ runner.temp }}/package
       - name: Install the exported package into a clean directory with spaces
+        # Relative paths: GNU tar on Windows reads "D:\..." as a remote host.
+        working-directory: ${{ runner.temp }}
         run: |
-          mkdir -p "$RUNNER_TEMP/plainspoken install"
-          tar -xf "$RUNNER_TEMP"/package/plainspoken-*.tar -C "$RUNNER_TEMP/plainspoken install" --strip-components=1
+          mkdir -p "plainspoken install"
+          tar -xf package/plainspoken-*.tar -C "plainspoken install" --strip-components=1
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code@2.1.308
       - name: Launch the host and assert hook callbacks
