@@ -49,19 +49,32 @@ poetry check --lock --strict
 poetry run ruff format --check .
 poetry run ruff check --no-fix .
 poetry run mypy
-poetry run pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml
+poetry run pytest tests/unit --cov --cov-report= --cov-fail-under=0 --junitxml=test-results-unit.xml
+poetry run pytest tests/integration --cov --cov-append --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results-integration.xml
 ```
 
 - Ruff checks formatting, imports, lint rules, and Google-style docstrings.
 - Mypy checks production Python under `scripts/`.
-- Pytest runs the existing tests. Coverage includes branches and Python subprocesses under `scripts/`, with an 80% minimum.
+- Pytest runs two tiers, marked `unit` and `integration` from their directory by
+  [`tests/conftest.py`](../tests/conftest.py). `tests/unit/` calls one module in process
+  with its boundaries replaced. `tests/integration/` wires the real modules together,
+  including the packaged hook commands as subprocesses, without a live host.
+  Coverage includes branches and Python subprocesses under `scripts/`, with an 80%
+  minimum over both tiers combined (`--cov-append`); the unit tier alone does not
+  reach it because `scripts/hook.py` has no in-process test yet.
+  Skipped tests print their reason (`-ra`). `pytest -m unit` selects one tier.
+- [`tests/unit/test_manifests.py`](../tests/unit/test_manifests.py) checks that the three host manifests
+  share `pyproject.toml`'s version, parse as JSON, and reference files that exist
+  (hooks, skills, rules, scripts, assets). It does not validate any host's manifest schema;
+  see [verify host changes](#verify-host-changes).
 - The XML files contain coverage and test results. They are generated outputs, not source files.
 
 To apply formatting explicitly, run `poetry run ruff format .`, then inspect the diff.
 The runtime-only test command remains available without contributor dependencies:
 
 ```sh
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests/unit -t . -v
+python3 -m unittest discover -s tests/integration -t . -v
 ```
 
 That command does not replace lint, type checks, or coverage before review.
@@ -96,31 +109,90 @@ poetry run pre-commit run --all-files
 
 The configuration alone does not install a Git hook. The hooks check staged Python
 formatting and lint without changing files. Mypy checks the full configured
-production scope on every commit. Tests and coverage remain separate checks.
+production scope on every commit. Pytest then runs the unit tier and the
+integration tier for the current OS, without coverage; tests for another OS skip
+with a printed reason.
+Coverage stays a CI check. Keep desktop E2E and model calls out of pre-commit.
 See [pre-commit usage](https://pre-commit.com/#usage).
+
+Observed on 2026-10-22 (macOS, Python 3.13): staging a file with an unused import and
+unformatted code made `poetry run pre-commit run` report the Ruff format and lint
+hooks as failed while Mypy and both test tiers passed. Pre-commit restores the working tree afterwards.
 
 ## Check changes in CI
 
-The [PR Pre-Merge Check workflow](../.github/workflows/tests.yml) runs only on
-pull requests targeting `main`. New PR commits replace older in-progress runs.
-Branch pushes do not start a duplicate workflow.
+The [PR Pre-Merge Check workflow](../.github/workflows/pr.yml) runs only on
+pull requests targeting `main` when they are opened, reopened, or updated.
+New PR commits cancel that PR's older in-progress run and nothing else.
+Branch pushes do not start a duplicate workflow. The workflow also accepts
+`workflow_call`, so release validation reuses these exact jobs.
 
-Its five checks follow Nplet's PR structure:
+Its six checks follow Nplet's PR structure:
 
 - **Code Quality Check:** lock validation, formatting, lint, and types.
-- **Linux Tests, Windows Tests, and MacOS Tests:** the full suite and per-platform
-  80% coverage gate, using the Python version pinned in `.python-version`.
-- **Test Quality Check:** requires all three platform jobs to pass, checks that
-  each supplied evidence, then combines coverage and enforces the coverage floor.
+- **Linux Tests, Windows Tests, and MacOS Tests:** the unit tier, then the integration
+  tier, as separate steps with separate test-result XML, and a per-platform 80%
+  coverage gate over both, using the Python version pinned in `.python-version`.
+  The suite has no OS-specific tests today; the Bash-dependent packaged-command test fails
+  rather than skips when Bash is missing, and any skip prints its reason.
+- **Python 3.11 Runtime Tests:** each tier through `python3 -m unittest discover`
+  on the oldest promised runtime, without Poetry or the pinned contributor tools.
+- **Test Quality Check:** requires all three platform jobs and the runtime lane to
+  pass, checks that each platform supplied evidence, then combines coverage and
+  enforces the coverage floor. A coverage percentage measures execution, not
+  assertion quality.
 
 Platform jobs retain coverage data, coverage XML, and test-result XML. The final
-job retains combined coverage XML. This structure uses one pinned Python version;
-the previous Python 3.11/3.14 matrix is no longer part of routine PR checks.
+job retains combined coverage XML.
+
+### Branch rules
+
+Merge policy lives in the repository ruleset for `main`, not in workflow YAML.
+As read on 2026-10-22, the ruleset requires these status checks, with
+"require branches to be up to date" enabled: Code Quality Check, Linux Tests,
+Windows Tests, MacOS Tests, and Test Quality Check. It also requires one approving
+review with code-owner review, resolved threads, squash merges, and CodeQL.
+Job names in `pr.yml` must keep matching those contexts. The runtime lane is
+enforced through Test Quality Check, so no ruleset change is needed; adding
+`Python 3.11 Runtime Tests` as a sixth required context is optional.
 
 These are configured checks. A workflow file does not prove the jobs passed.
 The test commands use Bash on all three systems, including Windows. They exercise
 Python behavior and synthetic hook payloads. They do not establish native Windows
 host integration or installed-plugin activation.
+
+## Track issue status on the GitHub Project
+
+The [Project Status workflow](../.github/workflows/project-status.yml) moves the
+linked issue on the GitHub Project through
+[`project-status.sh`](../.github/scripts/project-status.sh):
+
+- A branch named `issue-<n>-<slug>` is created on GitHub (first push included): **In Progress**.
+  One prefix is also accepted, so `claude/github-issue-3-pr-checks` links issue 3.
+  Any other name is ignored; the script never guesses from free text.
+- A PR from such a branch targeting `main` is opened or reopened, draft included: **In Review**.
+- That PR is merged: **Merged**. Closing without merging changes nothing.
+
+Statuses only move forward in the order Todo, In Progress, In Review, Merged,
+Staging, Done, Released, so delayed or duplicate events cannot move an issue back.
+Events for one branch run serially. Any merged PR from an issue branch marks the
+issue Merged, so give partial or unrelated work a branch without an issue number.
+Staging, Done, and Released transitions belong to the post-merge and release workflows.
+
+Setup, none of which is checked into the repository:
+
+1. Create repository variables `PROJECT_OWNER` and `PROJECT_NUMBER` for the target Project.
+2. Create a `PROJECT_TOKEN` secret with Project write access (a fine-grained token
+   with `Projects: read and write`, or a classic token with the `project` scope).
+   The default `GITHUB_TOKEN` cannot edit Projects.
+3. Give the Project's Status field options named exactly as listed above.
+4. Disable the Project's built-in "item closed → Done" workflow so closing keywords
+   do not skip the post-merge stages. Issue open/closed state and Project Status are separate.
+
+The workflow uses `pull_request_target` and checks out only the default branch, so
+PR code never runs with the project token. A fork can still name a branch after an
+issue; that moves a status, nothing more. The workflow was written against the
+`gh project` CLI and has not yet been observed against a configured Project.
 
 ## Verify host changes
 

@@ -3,12 +3,16 @@ name: PR Pre-Merge Check
 on:
   pull_request:
     branches: [main]
+    types: [opened, reopened, synchronize]
+  # Release validation reuses these exact checks instead of redefining them.
+  workflow_call:
 
 permissions:
   contents: read
 
+# One group per PR: a new push cancels only that PR's obsolete run.
 concurrency:
-  group: pr-pre-merge-${{ github.event.pull_request.number }}
+  group: pr-pre-merge-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 # Bash also exercises the POSIX commands shipped in the plugin manifests.
@@ -69,8 +73,11 @@ jobs:
           python -m pip install poetry==2.4.2
           python -c "import subprocess, sys; subprocess.run(['poetry', 'env', 'use', sys.executable], check=True)"
           poetry sync
-      - name: Test with branch and subprocess coverage
-        run: poetry run pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml
+      # Unit coverage alone sits below the floor; the floor applies to both tiers combined.
+      - name: Unit tests
+        run: poetry run pytest tests/unit --cov --cov-report= --cov-fail-under=0 --junitxml=test-results-unit.xml
+      - name: Integration tests with branch and subprocess coverage
+        run: poetry run pytest tests/integration --cov --cov-append --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results-integration.xml
       - name: Name coverage data for aggregation
         run: cp .coverage .coverage.${{ matrix.artifact }}
       - name: Retain per-platform results
@@ -83,22 +90,41 @@ jobs:
           path: |
             .coverage.${{ matrix.artifact }}
             coverage.xml
-            test-results.xml
+            test-results-unit.xml
+            test-results-integration.xml
           if-no-files-found: error
           retention-days: 14
+
+  runtime:
+    name: Python 3.11 Runtime Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      # The oldest promised runtime, without Poetry or the pinned contributor tools.
+      - name: Unit tests with the standard library only
+        run: python3 -m unittest discover -s tests/unit -t . -v
+      - name: Integration tests with the standard library only
+        run: python3 -m unittest discover -s tests/integration -t . -v
 
   coverage:
     name: Test Quality Check
     if: ${{ !cancelled() }}
-    needs: tests
+    needs: [tests, runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # A successful aggregate must never conceal a failed or missing OS run.
-      - name: Require every platform test job to pass
+      - name: Require every platform and runtime test job to pass
         env:
           TEST_RESULT: ${{ needs.tests.result }}
-        run: test "$TEST_RESULT" = success
+          RUNTIME_RESULT: ${{ needs.runtime.result }}
+        run: test "$TEST_RESULT" = success && test "$RUNTIME_RESULT" = success
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -119,7 +145,8 @@ jobs:
         run: |
           for platform in linux windows macos; do
             test -s "coverage-inputs/python-tests-$platform/.coverage.$platform"
-            test -s "coverage-inputs/python-tests-$platform/test-results.xml"
+            test -s "coverage-inputs/python-tests-$platform/test-results-unit.xml"
+            test -s "coverage-inputs/python-tests-$platform/test-results-integration.xml"
           done
           poetry run coverage combine coverage-inputs/python-tests-*
           poetry run coverage report

@@ -55,3 +55,8 @@ The manifests reference the shared SVG. Display in host interfaces remains unver
 Use the [development guide](development.md) to select the pinned interpreter,
 sync the locked Poetry environment, and run the checks. A development environment
 pass does not prove that a host can find `python3` or load Plainspoken's hooks.
+
+If `scripts/hook.py` reports 0% coverage on macOS, run `python -v -c pass` in the
+environment and look for "Skipping hidden .pth file". Python 3.13 ignores `.pth` files
+with the hidden flag, which disables subprocess coverage. `chflags -R nohidden .venv`
+restores it. Observed on 2026-10-22 in a worktree whose files all carried the flag.

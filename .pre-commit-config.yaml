@@ -23,3 +23,15 @@ repos:
         entry: poetry run mypy
         pass_filenames: false
         always_run: true
+      - id: unit-tests
+        name: Unit tests (no coverage)
+        language: unsupported
+        entry: poetry run pytest -q tests/unit
+        pass_filenames: false
+        always_run: true
+      - id: integration-tests
+        name: Integration tests for this OS (no coverage)
+        language: unsupported
+        entry: poetry run pytest -q tests/integration
+        pass_filenames: false
+        always_run: true
