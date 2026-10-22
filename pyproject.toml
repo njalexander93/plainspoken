@@ -54,7 +54,7 @@ warn_return_any = true
 
 [tool.pytest.ini_options]
 minversion = "9.0"
-addopts = "-v --strict-config --strict-markers --import-mode=importlib"
+addopts = "-v -ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 pythonpath = ["scripts", "."]
 
