@@ -73,8 +73,11 @@ jobs:
           python -m pip install poetry==2.4.2
           python -c "import subprocess, sys; subprocess.run(['poetry', 'env', 'use', sys.executable], check=True)"
           poetry sync
-      - name: Test with branch and subprocess coverage
-        run: poetry run pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml
+      # Unit coverage alone sits below the floor; the floor applies to both tiers combined.
+      - name: Unit tests
+        run: poetry run pytest tests/unit --cov --cov-report= --cov-fail-under=0 --junitxml=test-results-unit.xml
+      - name: Integration tests with branch and subprocess coverage
+        run: poetry run pytest tests/integration --cov --cov-append --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results-integration.xml
       - name: Name coverage data for aggregation
         run: cp .coverage .coverage.${{ matrix.artifact }}
       - name: Retain per-platform results
@@ -87,7 +90,8 @@ jobs:
           path: |
             .coverage.${{ matrix.artifact }}
             coverage.xml
-            test-results.xml
+            test-results-unit.xml
+            test-results-integration.xml
           if-no-files-found: error
           retention-days: 14
 
@@ -103,8 +107,10 @@ jobs:
         with:
           python-version: "3.11"
       # The oldest promised runtime, without Poetry or the pinned contributor tools.
-      - name: Run the suite with the standard library only
-        run: python3 -m unittest discover -s tests -v
+      - name: Unit tests with the standard library only
+        run: python3 -m unittest discover -s tests/unit -t . -v
+      - name: Integration tests with the standard library only
+        run: python3 -m unittest discover -s tests/integration -t . -v
 
   coverage:
     name: Test Quality Check
@@ -139,7 +145,8 @@ jobs:
         run: |
           for platform in linux windows macos; do
             test -s "coverage-inputs/python-tests-$platform/.coverage.$platform"
-            test -s "coverage-inputs/python-tests-$platform/test-results.xml"
+            test -s "coverage-inputs/python-tests-$platform/test-results-unit.xml"
+            test -s "coverage-inputs/python-tests-$platform/test-results-integration.xml"
           done
           poetry run coverage combine coverage-inputs/python-tests-*
           poetry run coverage report

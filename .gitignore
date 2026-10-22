@@ -57,6 +57,7 @@ coverage.xml
 coverage.json
 nosetests.xml
 test-results.xml
+test-results-*.xml
 *.cover
 *.py,cover
 .dmypy.json

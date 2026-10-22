@@ -57,6 +57,10 @@ minversion = "9.0"
 addopts = "-v -ra --strict-config --strict-markers --import-mode=importlib"
 testpaths = ["tests"]
 pythonpath = ["scripts", "."]
+markers = [
+    "unit: one module in process, boundaries replaced.",
+    "integration: real modules wired together, subprocesses included.",
+]
 
 [tool.coverage.run]
 branch = true

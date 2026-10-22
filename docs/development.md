@@ -49,14 +49,21 @@ poetry check --lock --strict
 poetry run ruff format --check .
 poetry run ruff check --no-fix .
 poetry run mypy
-poetry run pytest --cov --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml
+poetry run pytest tests/unit --cov --cov-report= --cov-fail-under=0 --junitxml=test-results-unit.xml
+poetry run pytest tests/integration --cov --cov-append --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results-integration.xml
 ```
 
 - Ruff checks formatting, imports, lint rules, and Google-style docstrings.
 - Mypy checks production Python under `scripts/`.
-- Pytest runs the existing tests. Coverage includes branches and Python subprocesses under `scripts/`, with an 80% minimum.
-  Skipped tests print their reason (`-ra`).
-- [`tests/test_manifests.py`](../tests/test_manifests.py) checks that the three host manifests
+- Pytest runs two tiers, marked `unit` and `integration` from their directory by
+  [`tests/conftest.py`](../tests/conftest.py). `tests/unit/` calls one module in process
+  with its boundaries replaced. `tests/integration/` wires the real modules together,
+  including the packaged hook commands as subprocesses, without a live host.
+  Coverage includes branches and Python subprocesses under `scripts/`, with an 80%
+  minimum over both tiers combined (`--cov-append`); the unit tier alone does not
+  reach it because `scripts/hook.py` has no in-process test yet.
+  Skipped tests print their reason (`-ra`). `pytest -m unit` selects one tier.
+- [`tests/unit/test_manifests.py`](../tests/unit/test_manifests.py) checks that the three host manifests
   share `pyproject.toml`'s version, parse as JSON, and reference files that exist
   (hooks, skills, rules, scripts, assets). It does not validate any host's manifest schema;
   see [verify host changes](#verify-host-changes).
@@ -66,7 +73,8 @@ To apply formatting explicitly, run `poetry run ruff format .`, then inspect the
 The runtime-only test command remains available without contributor dependencies:
 
 ```sh
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests/unit -t . -v
+python3 -m unittest discover -s tests/integration -t . -v
 ```
 
 That command does not replace lint, type checks, or coverage before review.
@@ -101,14 +109,15 @@ poetry run pre-commit run --all-files
 
 The configuration alone does not install a Git hook. The hooks check staged Python
 formatting and lint without changing files. Mypy checks the full configured
-production scope on every commit. Pytest runs the shared suite plus any test
-for the current OS, without coverage; tests for another OS skip with a printed reason.
+production scope on every commit. Pytest then runs the unit tier and the
+integration tier for the current OS, without coverage; tests for another OS skip
+with a printed reason.
 Coverage stays a CI check. Keep desktop E2E and model calls out of pre-commit.
 See [pre-commit usage](https://pre-commit.com/#usage).
 
 Observed on 2026-10-22 (macOS, Python 3.13): staging a file with an unused import and
 unformatted code made `poetry run pre-commit run` report the Ruff format and lint
-hooks as failed while Mypy and Pytest passed. Pre-commit restores the working tree afterwards.
+hooks as failed while Mypy and both test tiers passed. Pre-commit restores the working tree afterwards.
 
 ## Check changes in CI
 
@@ -121,12 +130,13 @@ Branch pushes do not start a duplicate workflow. The workflow also accepts
 Its six checks follow Nplet's PR structure:
 
 - **Code Quality Check:** lock validation, formatting, lint, and types.
-- **Linux Tests, Windows Tests, and MacOS Tests:** the full suite and per-platform
-  80% coverage gate, using the Python version pinned in `.python-version`.
+- **Linux Tests, Windows Tests, and MacOS Tests:** the unit tier, then the integration
+  tier, as separate steps with separate test-result XML, and a per-platform 80%
+  coverage gate over both, using the Python version pinned in `.python-version`.
   The suite has no OS-specific tests today; the Bash-dependent packaged-command test fails
   rather than skips when Bash is missing, and any skip prints its reason.
-- **Python 3.11 Runtime Tests:** `python3 -m unittest discover -s tests` on the
-  oldest promised runtime, without Poetry or the pinned contributor tools.
+- **Python 3.11 Runtime Tests:** each tier through `python3 -m unittest discover`
+  on the oldest promised runtime, without Poetry or the pinned contributor tools.
 - **Test Quality Check:** requires all three platform jobs and the runtime lane to
   pass, checks that each platform supplied evidence, then combines coverage and
   enforces the coverage floor. A coverage percentage measures execution, not
