@@ -92,7 +92,7 @@ jobs:
           retention-days: 14
 
   runtime:
-    name: Linux Python 3.11 Runtime Tests
+    name: Python 3.11 Runtime Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

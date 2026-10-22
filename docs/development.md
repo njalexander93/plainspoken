@@ -125,7 +125,7 @@ Its six checks follow Nplet's PR structure:
   80% coverage gate, using the Python version pinned in `.python-version`.
   The suite has no OS-specific tests today; the Bash-dependent packaged-command test fails
   rather than skips when Bash is missing, and any skip prints its reason.
-- **Linux Python 3.11 Runtime Tests:** `python3 -m unittest discover -s tests` on the
+- **Python 3.11 Runtime Tests:** `python3 -m unittest discover -s tests` on the
   oldest promised runtime, without Poetry or the pinned contributor tools.
 - **Test Quality Check:** requires all three platform jobs and the runtime lane to
   pass, checks that each platform supplied evidence, then combines coverage and
@@ -144,7 +144,7 @@ Windows Tests, MacOS Tests, and Test Quality Check. It also requires one approvi
 review with code-owner review, resolved threads, squash merges, and CodeQL.
 Job names in `pr.yml` must keep matching those contexts. The runtime lane is
 enforced through Test Quality Check, so no ruleset change is needed; adding
-`Linux Python 3.11 Runtime Tests` as a sixth required context is optional.
+`Python 3.11 Runtime Tests` as a sixth required context is optional.
 
 These are configured checks. A workflow file does not prove the jobs passed.
 The test commands use Bash on all three systems, including Windows. They exercise
