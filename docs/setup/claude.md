@@ -68,4 +68,19 @@ Observed on **2026-10-21**, using Claude Code engine `2.1.304`:
 Project-hook runs do not prove plugin installation. The long-answer test requested
 a review after text was visible. It does not demonstrate retraction or a silent replacement.
 
+Observed on **2026-10-22** in the [post-merge validation workflow](../development.md#validate-merges-to-main)
+([run 39837670186](https://github.com/njalexander93/plainspoken/actions/runs/39837670186)),
+using Claude Code CLI `2.1.308` installed with npm on GitHub-hosted `ubuntu-24.04`,
+`windows-2025`, and `macos-15` runners:
+
+- `claude --plugin-dir` loaded the exported package from a directory with spaces and
+  reported it in `system/init` with version `0.1.0` on all three systems.
+- The `SessionStart` and `UserPromptSubmit` hooks returned the canonical reminder on
+  all three systems, Windows included, before the unauthenticated session ended with
+  "Not logged in".
+- The `Stop` review was not exercised: no API key is configured in the repository.
+
+These are CLI runs without a model turn. They verify installation from the exported
+payload and callback delivery; they do not certify the desktop app.
+
 For problems, see [troubleshooting](../troubleshooting.md).

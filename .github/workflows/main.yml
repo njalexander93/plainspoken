@@ -1,0 +1,177 @@
+name: Main Post-Merge Validation
+
+# Validates the exact revision that reached main: every merged PR and any
+# permitted direct push, which the same push trigger covers. An unmerged PR
+# closing never starts this. A pilot/** branch runs the same validation before
+# the workflow reaches main (GitHub cannot dispatch a workflow that is not on the
+# default branch yet). workflow_dispatch revalidates a tagged revision whose
+# retained evidence expired.
+on:
+  push:
+    branches: [main, "pilot/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each revision validates on its own; a newer push never cancels or replaces it.
+concurrency:
+  group: main-validation-${{ github.sha }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: Merged Revision Checks
+    # The PR gates, unchanged, on the merged revision instead of a PR head.
+    uses: ./.github/workflows/pr.yml
+
+  package:
+    name: Package Export
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The validated commit, even if main moved on while this run queued.
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # The oldest promised runtime, without Poetry or contributor tools.
+          python-version: "3.11"
+      - name: Export the tracked files of this revision
+        run: bash .github/scripts/export-package.sh "$GITHUB_SHA" "$RUNNER_TEMP/package"
+      - name: Run the exported tests outside the checkout
+        working-directory: ${{ runner.temp }}/package/export
+        run: |
+          python3 -m unittest discover -s tests/unit -t . -v
+          python3 -m unittest discover -s tests/integration -t . -v
+      - name: Retain the package and its digest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: |
+            ${{ runner.temp }}/package/plainspoken-*.tar
+            ${{ runner.temp }}/package/package.json
+          if-no-files-found: error
+          retention-days: 90
+
+  host-claude:
+    name: Claude Code CLI on ${{ matrix.name }}
+    needs: package
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, name: Linux, artifact: linux}
+          - {os: windows-2025, name: Windows, artifact: windows}
+          - {os: macos-15, name: MacOS, artifact: macos}
+    env:
+      # Only trusted revisions reach this workflow (main pushes and manual dispatch),
+      # so the key may be present. Without it the Stop review is recorded as skipped.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/package
+      - name: Install the exported package into a clean directory with spaces
+        # Relative paths: GNU tar on Windows reads "D:\..." as a remote host.
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir -p "plainspoken install"
+          tar -xf package/plainspoken-*.tar -C "plainspoken install" --strip-components=1
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.308
+      - name: Launch the host and assert hook callbacks
+        run: >-
+          python3 .github/scripts/host_pilot_claude.py
+          --plugin "$RUNNER_TEMP/plainspoken install" --out "$RUNNER_TEMP/evidence"
+      - name: Retain host evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: host-claude-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/evidence
+          if-no-files-found: error
+          retention-days: 90
+
+  eligibility:
+    name: Release Eligibility
+    if: ${{ !cancelled() }}
+    needs: [checks, package, host-claude]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: evidence
+      # One aggregate result bound to the revision and payload; a missing host
+      # result fails it rather than being treated as a pass.
+      - name: Aggregate the evidence for this revision
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          PACKAGE: ${{ needs.package.result }}
+          HOSTS: ${{ needs.host-claude.result }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          from pathlib import Path
+          package = json.loads(Path("evidence/package/package.json").read_text())
+          hosts = {}
+          for name in ("linux", "windows", "macos"):
+              path = Path(f"evidence/host-claude-{name}/pilot.json")
+              hosts[name] = json.loads(path.read_text()) if path.is_file() else {"ok": False, "missing": True}
+          jobs = {"checks": os.environ["CHECKS"], "package": os.environ["PACKAGE"], "hosts": os.environ["HOSTS"]}
+          eligible = all(v == "success" for v in jobs.values()) and all(h.get("ok") for h in hosts.values())
+          result = {
+              "sha": os.environ["GITHUB_SHA"],
+              "run": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "package": package,
+              "jobs": jobs,
+              "hosts": {k: {"ok": v.get("ok", False), "host_version": v.get("host_version"), "sessions": v.get("sessions")} for k, v in hosts.items()},
+              "eligible": eligible,
+          }
+          Path("release-eligibility.json").write_text(json.dumps(result, indent=2) + "\n")
+          print(json.dumps(result, indent=2))
+          raise SystemExit(0 if eligible else 1)
+          EOF
+      - name: Retain the eligibility result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-eligibility
+          path: release-eligibility.json
+          if-no-files-found: error
+          retention-days: 90
+
+  project-status:
+    name: Project Status
+    # Only a real main push moves issues; failed or incomplete validation leaves them Merged.
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: eligibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - run: bash .github/scripts/post-merge-status.sh apply "$GITHUB_SHA"
