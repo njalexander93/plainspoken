@@ -17,8 +17,10 @@
 No third-party Python packages or Poetry installation are needed to run Plainspoken.
 Poetry manages the separate [development environment](development.md).
 
-The installation commands use a macOS or Linux shell. Native Windows host hooks
-remain unverified. Python checks on Windows do not establish host activation.
+The installation commands use a macOS or Linux shell. On native Windows, only the
+Claude Code CLI reminders have been observed, in CI without a model turn; see the
+[Claude Code observed runs](setup/claude.md#observed-host-runs). Python checks on
+Windows do not establish host activation.
 
 1. Clone the repository:
 
