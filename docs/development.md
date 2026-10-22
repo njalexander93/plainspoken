@@ -161,6 +161,63 @@ The test commands use Bash on all three systems, including Windows. They exercis
 Python behavior and synthetic hook payloads. They do not establish native Windows
 host integration or installed-plugin activation.
 
+## Validate merges to main
+
+The [Main Post-Merge Validation workflow](../.github/workflows/main.yml) runs on
+every push to `main`: each merged PR, and any direct push the branch rules permit.
+A PR that closes without merging starts nothing. Each run is bound to the pushed
+commit: every job checks out `github.sha`, runs never cancel each other, and the
+exported payload names that commit. It can also be started manually with
+`workflow_dispatch` to pilot the workflow on a branch, or to revalidate an older
+revision by dispatching a tag that points at it.
+
+Its jobs:
+
+- **Merged Revision Checks:** `pr.yml` through `workflow_call`, unchanged, on the merged commit.
+- **Package Export:** [`export-package.sh`](../.github/scripts/export-package.sh) exports
+  the tracked files of the commit with `git archive` into a directory outside the
+  checkout, verifies the files the host manifests need, records the archive's
+  SHA-256 in `package.json`, and runs both test tiers from the export with Python 3.11
+  and the standard library only. The export test that needs Git history skips there.
+- **Claude Code CLI on Linux, Windows, and MacOS:** each job downloads that package,
+  extracts it into a directory with spaces, installs a pinned Claude Code CLI with
+  npm, and runs [`host_pilot_claude.py`](../.github/scripts/host_pilot_claude.py).
+  The script launches `claude -p` from an empty directory with an empty
+  `CLAUDE_CONFIG_DIR`, so only the exported plugin's hooks can run, and asserts the
+  `system/init` plugin entry plus the `SessionStart` and `UserPromptSubmit`
+  payloads from `--include-hook-events`. Exit status is not evidence: the adapter
+  fails open and an unauthenticated session exits 1 after the hooks ran. With an
+  `ANTHROPIC_API_KEY` repository secret, a second session asks for a long answer
+  and asserts one `Stop` review request followed by an empty continuation response.
+  Without the secret that session is recorded as skipped with its reason.
+  `--bare` is not used: it loads the plugin but does not run its hooks (observed
+  with Claude Code 2.1.296).
+- **Release Eligibility:** runs unless cancelled, requires the three jobs above to
+  succeed and all three host results to be present and passing, and writes
+  `release-eligibility.json` with the commit, run URL, package digest, job results,
+  and per-host checks. A missing host result fails it.
+- **Project Status:** on `push` only, after eligibility, moves linked issues as
+  described in the next section.
+
+Artifacts (`package`, `host-claude-*`, `release-eligibility`) are retained for 90
+days, the maximum for this repository. The eligibility file and the package it
+names are the handoff for the release workflow: publication must use exactly that
+archive and digest. If they have expired, the revision is not eligible until a
+`workflow_dispatch` run on a tag at that commit regenerates them. Publication
+logic itself is not part of this workflow yet.
+
+Limits, stated plainly:
+
+- The host pilot drives the **Claude Code CLI**, not the Claude desktop app, Codex
+  desktop, or Cursor. It verifies installation from the exported payload and
+  callback delivery; it does not certify desktop behavior. Desktop and Codex/Cursor
+  automation on GitHub-hosted runners has not been attempted yet; see the blockers
+  recorded in the issue.
+- Only trusted revisions run this workflow (pushes to `main` and manual dispatch,
+  which needs write access), so the API key never reaches PR code. Streams are
+  retained as evidence; they contain the prompt, the answer, and the plugin path.
+- Repeating the full validation for a version-only release merge is accepted.
+
 ## Track issue status on the GitHub Project
 
 The [Project Status workflow](../.github/workflows/project-status.yml) moves the
@@ -177,7 +234,21 @@ Statuses only move forward in the order Todo, In Progress, In Review, Merged,
 Staging, Done, Released, so delayed or duplicate events cannot move an issue back.
 Events for one branch run serially. Any merged PR from an issue branch marks the
 issue Merged, so give partial or unrelated work a branch without an issue number.
-Staging, Done, and Released transitions belong to the post-merge and release workflows.
+
+After [post-merge validation](#validate-merges-to-main) succeeds,
+[`post-merge-status.sh`](../.github/scripts/post-merge-status.sh) looks up the PRs
+whose merge commit is the validated commit and moves each linked issue:
+
+- **Done** when every changed file is `README.md`, `LICENSE`, or a Markdown file under
+  `docs/`. This is the reviewed nonfunctional allowlist.
+- **Staging** for anything else, including `skills/plainspoken/SKILL.md`, hooks,
+  workflows, packaging, and unknown paths. Staging means validated and awaiting
+  release; it is not a hosted environment and not publication authorization.
+
+Failed, cancelled, or incomplete validation never reaches this step, so the issue
+stays Merged and the failed run is the evidence. Documentation-only merges still
+run every check. A direct push has no PR and moves nothing. Released belongs to the
+release workflow. The same token needs to read pull requests in this repository.
 
 Setup, none of which is checked into the repository:
 
