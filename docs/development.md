@@ -167,9 +167,10 @@ The [Main Post-Merge Validation workflow](../.github/workflows/main.yml) runs on
 every push to `main`: each merged PR, and any direct push the branch rules permit.
 A PR that closes without merging starts nothing. Each run is bound to the pushed
 commit: every job checks out `github.sha`, runs never cancel each other, and the
-exported payload names that commit. It can also be started manually with
-`workflow_dispatch` to pilot the workflow on a branch, or to revalidate an older
-revision by dispatching a tag that points at it.
+exported payload names that commit. A push to a `pilot/**` branch runs the same
+validation, which is how the workflow is observed before it reaches `main`,
+because GitHub cannot dispatch a workflow that is not yet on the default branch.
+Once it is, `workflow_dispatch` on a tag revalidates an older revision.
 
 Its jobs:
 
@@ -196,8 +197,8 @@ Its jobs:
   succeed and all three host results to be present and passing, and writes
   `release-eligibility.json` with the commit, run URL, package digest, job results,
   and per-host checks. A missing host result fails it.
-- **Project Status:** on `push` only, after eligibility, moves linked issues as
-  described in the next section.
+- **Project Status:** on a push to `main` only, after eligibility, moves linked
+  issues as described in the next section.
 
 Artifacts (`package`, `host-claude-*`, `release-eligibility`) are retained for 90
 days, the maximum for this repository. The eligibility file and the package it
@@ -213,8 +214,9 @@ Limits, stated plainly:
   callback delivery; it does not certify desktop behavior. Desktop and Codex/Cursor
   automation on GitHub-hosted runners has not been attempted yet; see the blockers
   recorded in the issue.
-- Only trusted revisions run this workflow (pushes to `main` and manual dispatch,
-  which needs write access), so the API key never reaches PR code. Streams are
+- Only trusted revisions run this workflow (pushes to `main` or a `pilot/**`
+  branch, and manual dispatch, all of which need write access), so the API key
+  never reaches PR code from a fork. Streams are
   retained as evidence; they contain the prompt, the answer, and the plugin path.
 - Repeating the full validation for a version-only release merge is accepted.
 

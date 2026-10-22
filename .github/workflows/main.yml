@@ -2,11 +2,13 @@ name: Main Post-Merge Validation
 
 # Validates the exact revision that reached main: every merged PR and any
 # permitted direct push, which the same push trigger covers. An unmerged PR
-# closing never starts this. workflow_dispatch pilots the workflow on a branch
-# and revalidates a tagged revision whose retained evidence expired.
+# closing never starts this. A pilot/** branch runs the same validation before
+# the workflow reaches main (GitHub cannot dispatch a workflow that is not on the
+# default branch yet). workflow_dispatch revalidates a tagged revision whose
+# retained evidence expired.
 on:
   push:
-    branches: [main]
+    branches: [main, "pilot/**"]
   workflow_dispatch:
 
 permissions:
@@ -157,7 +159,7 @@ jobs:
   project-status:
     name: Project Status
     # Only a real main push moves issues; failed or incomplete validation leaves them Merged.
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: eligibility
     runs-on: ubuntu-24.04
     timeout-minutes: 5
