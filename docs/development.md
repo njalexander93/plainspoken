@@ -101,13 +101,14 @@ poetry run pre-commit run --all-files
 
 The configuration alone does not install a Git hook. The hooks check staged Python
 formatting and lint without changing files. Mypy checks the full configured
-production scope on every commit. Tests and coverage remain separate checks.
-Keep it that way: no tests, desktop E2E, or model calls in pre-commit.
+production scope on every commit. Pytest runs the shared suite plus any test
+for the current OS, without coverage; tests for another OS skip with a printed reason.
+Coverage stays a CI check. Keep desktop E2E and model calls out of pre-commit.
 See [pre-commit usage](https://pre-commit.com/#usage).
 
 Observed on 2026-10-22 (macOS, Python 3.13): staging a file with an unused import and
 unformatted code made `poetry run pre-commit run` report the Ruff format and lint
-hooks as failed while Mypy passed. Pre-commit restores the working tree afterwards.
+hooks as failed while Mypy and Pytest passed. Pre-commit restores the working tree afterwards.
 
 ## Check changes in CI
 
